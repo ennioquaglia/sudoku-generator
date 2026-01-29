@@ -3,5 +3,14 @@ name = "sudoku-generator"
 version = "0.1.0"
 edition = "2024"
 
+
+[lib]
+name = "sudokulib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sudoku-generator"
+path = "src/main.rs"
+
 [dependencies]
 itertools = "0.14.0"
