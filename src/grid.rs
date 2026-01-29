@@ -3,10 +3,10 @@ use std::fmt;
 use itertools::Itertools;
 
 pub fn to_sudoku_coord(i: usize) -> (usize, usize) {
-    (i / 9, i % 9)
+    (i % 9, i / 9)
 }
 
-pub fn from_sudoku_coord(y: usize, x: usize) -> usize {
+pub fn from_sudoku_coord(x: usize, y: usize) -> usize {
     y * 9 + x
 }
 
@@ -55,6 +55,7 @@ impl SudokuGrid {
 
 impl SudokuGrid {
     pub fn row(&self, y: usize) -> GridSliceIterator<'_> {
+        assert!((0..9).contains(&y), "invalid row index");
         GridSliceIterator {
             grid: self,
             indicies: (0..9).map(|i| i + y * 9).rev().collect(),
@@ -65,6 +66,8 @@ impl SudokuGrid {
     }
 
     pub fn column(&self, x: usize) -> GridSliceIterator<'_> {
+        assert!((0..9).contains(&x), "invalid column index");
+
         GridSliceIterator {
             grid: self,
             indicies: (0..9).map(|i| i * 9 + x).rev().collect(),
@@ -72,6 +75,24 @@ impl SudokuGrid {
     }
     pub fn columns(&self) -> impl Iterator<Item = GridSliceIterator<'_>> {
         (0..9).map(|i| self.column(i))
+    }
+
+    pub fn rect(&self, index: usize) -> GridSliceIterator<'_> {
+        assert!((0..9).contains(&index), "invalid rect index");
+        let rect_coords = (index % 3, index / 3);
+        let first_cell_coords = (rect_coords.0 * 3, rect_coords.1 * 3);
+
+        GridSliceIterator {
+            grid: self,
+            indicies: (0..9)
+                .map(|i| {
+                    from_sudoku_coord(first_cell_coords.0 + (i % 3), first_cell_coords.1 + i / 3)
+                })
+                .collect(),
+        }
+    }
+    pub fn rects(&self) -> impl Iterator<Item = GridSliceIterator<'_>> {
+        (0..9).map(|i| self.rect(i))
     }
 }
 
@@ -116,7 +137,7 @@ impl fmt::Display for SudokuGrid {
                     .join(" ┃ ")
             )?;
         }
-        h_line(f, "┗", "━", "┻", "┻", "┛")?;
+        h_line(f, "┗", "━", "┷", "┻", "┛")?;
         Ok(())
     }
 }
