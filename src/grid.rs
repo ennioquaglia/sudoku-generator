@@ -10,7 +10,13 @@ pub fn from_sudoku_coord(x: usize, y: usize) -> usize {
     y * 9 + x
 }
 
-#[derive(Copy, Clone)]
+pub fn to_sudoku_subrect_index(i: usize) -> usize {
+    let (x, y) = to_sudoku_coord(i);
+    let (rx, ry) = (x / 3, y / 3);
+    rx + ry * 3
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct SudokuGrid {
     pub data: [u8; 9 * 9],
 }
@@ -33,6 +39,29 @@ impl<'a> Iterator for GridSliceIterator<'a> {
 impl<'a> fmt::Debug for GridSliceIterator<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         f.debug_struct("GridSliceIterator")
+            .field("indicies", &self.indicies)
+            .finish()
+    }
+}
+
+pub struct GridSliceMutIterator<'a> {
+    indicies: Vec<usize>,
+    grid: &'a mut SudokuGrid,
+}
+impl<'a> Iterator for GridSliceMutIterator<'a> {
+    type Item = &'a mut u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(index) = self.indicies.pop() {
+            let value = &mut self.grid.data[index];
+            return Some(unsafe { std::mem::transmute::<&mut u8, &mut u8>(value) });
+        }
+        None
+    }
+}
+impl<'a> fmt::Debug for GridSliceMutIterator<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        f.debug_struct("GridSliceMutIterator")
             .field("indicies", &self.indicies)
             .finish()
     }
@@ -61,6 +90,13 @@ impl SudokuGrid {
             indicies: (0..9).map(|i| i + y * 9).rev().collect(),
         }
     }
+    pub fn row_mut(&mut self, y: usize) -> GridSliceMutIterator<'_> {
+        assert!((0..9).contains(&y), "invalid row index");
+        GridSliceMutIterator {
+            grid: self,
+            indicies: (0..9).map(|i| i + y * 9).rev().collect(),
+        }
+    }
     pub fn rows(&self) -> impl Iterator<Item = GridSliceIterator<'_>> {
         (0..9).map(|i| self.row(i))
     }
@@ -69,6 +105,14 @@ impl SudokuGrid {
         assert!((0..9).contains(&x), "invalid column index");
 
         GridSliceIterator {
+            grid: self,
+            indicies: (0..9).map(|i| i * 9 + x).rev().collect(),
+        }
+    }
+    pub fn column_mut(&mut self, x: usize) -> GridSliceMutIterator<'_> {
+        assert!((0..9).contains(&x), "invalid column index");
+
+        GridSliceMutIterator {
             grid: self,
             indicies: (0..9).map(|i| i * 9 + x).rev().collect(),
         }
@@ -83,6 +127,20 @@ impl SudokuGrid {
         let first_cell_coords = (rect_coords.0 * 3, rect_coords.1 * 3);
 
         GridSliceIterator {
+            grid: self,
+            indicies: (0..9)
+                .map(|i| {
+                    from_sudoku_coord(first_cell_coords.0 + (i % 3), first_cell_coords.1 + i / 3)
+                })
+                .collect(),
+        }
+    }
+    pub fn rect_mut(&mut self, index: usize) -> GridSliceMutIterator<'_> {
+        assert!((0..9).contains(&index), "invalid rect index");
+        let rect_coords = (index % 3, index / 3);
+        let first_cell_coords = (rect_coords.0 * 3, rect_coords.1 * 3);
+
+        GridSliceMutIterator {
             grid: self,
             indicies: (0..9)
                 .map(|i| {

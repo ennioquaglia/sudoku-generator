@@ -26,7 +26,7 @@ pub enum SudokuErrorLocation {
 impl SudokuError {
     pub fn new(error_type: SudokuErrorType) -> Self {
         Self {
-            error_type: error_type,
+            error_type,
             ..Default::default()
         }
     }
@@ -47,7 +47,7 @@ impl SudokuError {
 }
 
 impl SudokuGrid {
-    fn check_group<I, T>(iter: I) -> Result<(), SudokuError>
+    fn check_group<I, T>(iter: I, allow_incomplete: bool) -> Result<(), SudokuError>
     where
         I: Iterator<Item = T>,
         T: Into<usize>,
@@ -58,7 +58,11 @@ impl SudokuGrid {
 
             // no value
             if val == 0 {
-                return Err(SudokuError::new(SudokuErrorType::MissingValue));
+                if allow_incomplete {
+                    continue;
+                } else {
+                    return Err(SudokuError::new(SudokuErrorType::MissingValue));
+                }
             }
 
             let i = val - 1;
@@ -75,28 +79,35 @@ impl SudokuGrid {
 
             ok[i] = true;
         }
-        if ok.iter().all(|val| *val) {
+        if allow_incomplete || ok.iter().all(|val| *val) {
             Ok(())
         } else {
             Err(SudokuError::new(SudokuErrorType::MissingValue))
         }
     }
 
-    pub fn check_correct(&self) -> Result<(), SudokuError> {
+    pub fn check_correct(&self, allow_incomplete: bool) -> Result<(), SudokuError> {
         for (i, row) in self.rows().enumerate() {
-            Self::check_group(row).map_err(|e| e.with_location(SudokuErrorLocation::Row(i)))?;
+            Self::check_group(row, allow_incomplete)
+                .map_err(|e| e.with_location(SudokuErrorLocation::Row(i)))?;
         }
         for (i, row) in self.columns().enumerate() {
-            Self::check_group(row).map_err(|e| e.with_location(SudokuErrorLocation::Column(i)))?;
+            Self::check_group(row, allow_incomplete)
+                .map_err(|e| e.with_location(SudokuErrorLocation::Column(i)))?;
         }
         for (i, row) in self.rects().enumerate() {
-            Self::check_group(row).map_err(|e| e.with_location(SudokuErrorLocation::Rect(i)))?;
+            Self::check_group(row, allow_incomplete)
+                .map_err(|e| e.with_location(SudokuErrorLocation::Rect(i)))?;
         }
         Ok(())
     }
 
     pub fn is_incomplete(&self) -> bool {
-        self.data.iter().any(|v| *v == 0)
+        self.data.contains(&0)
+    }
+
+    pub fn is_complete_and_correct(&self) -> bool {
+        self.check_correct(false).is_ok()
     }
 }
 
@@ -104,17 +115,17 @@ impl SudokuGrid {
 fn test_sudoku_check() {
     let mut s = SudokuGrid::fill_random();
 
-    assert!(s.check_correct().is_ok());
+    assert!(s.is_complete_and_correct());
     assert!(!s.is_incomplete());
 
     let old = s.data[42];
     s.data[42] = 0;
 
-    assert!(s.check_correct().is_err());
+    assert!(!s.is_complete_and_correct());
     assert!(s.is_incomplete());
 
     s.data[42] = (old - 2) % 9 + 1;
 
-    assert!(s.check_correct().is_err());
+    assert!(!s.is_complete_and_correct());
     assert!(!s.is_incomplete());
 }
