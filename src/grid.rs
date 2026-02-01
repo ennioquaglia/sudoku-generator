@@ -16,7 +16,7 @@ pub fn to_sudoku_subrect_index(i: usize) -> usize {
     rx + ry * 3
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct SudokuGrid {
     pub data: [u8; 9 * 9],
 }

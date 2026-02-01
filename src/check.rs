@@ -1,4 +1,7 @@
-use crate::grid::SudokuGrid;
+use crate::{
+    grid::SudokuGrid,
+    solver::{SolverType, solve_sudoku_helper},
+};
 
 #[derive(Debug, Default)]
 pub struct SudokuError {
@@ -109,6 +112,12 @@ impl SudokuGrid {
     pub fn is_complete_and_correct(&self) -> bool {
         self.check_correct(false).is_ok()
     }
+
+    pub fn has_unique_solution(&self) -> bool {
+        assert!(self.check_correct(true).is_ok());
+
+        solve_sudoku_helper(*self, &mut SolverType::CheckUnique).is_ok()
+    }
 }
 
 #[test]
@@ -128,4 +137,29 @@ fn test_sudoku_check() {
 
     assert!(!s.is_complete_and_correct());
     assert!(!s.is_incomplete());
+}
+
+#[test]
+fn check_complete_sudoku_has_unique_solution() {
+    let s = SudokuGrid::fill_random();
+    assert!(!s.is_incomplete());
+    assert!(s.has_unique_solution())
+}
+
+#[test]
+fn check_complete_sudoku_but_one_cell_has_unique_solution() {
+    let mut s = SudokuGrid::fill_random();
+    s.data[42] = 0;
+    assert!(s.is_incomplete());
+    assert!(s.has_unique_solution())
+}
+
+#[test]
+fn check_complete_sudoku_but_one_rect_has_unique_solution() {
+    let mut s = SudokuGrid::fill_random();
+    for cell in s.rect_mut(5) {
+        *cell = 0;
+    }
+    assert!(s.is_incomplete());
+    assert!(s.has_unique_solution())
 }
