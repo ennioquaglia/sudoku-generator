@@ -6,6 +6,17 @@ It generate a sudoku starting from two seeds:
 - *sudoku_seed*: used to generate the full sudoku grid
 - *stencil_seed*: used to generate the stencil. The stencil is used to remove the maximum number of cells while keeping the sudoku solvable with just one solution.
 
+usage:
+```
+sudoku-generator
+    Generate a random sudoku.
+
+sudoku-generator [single_seed]
+    Generate a random sudoku from a single seed.
+    
+sudoku-generator [sudoku_seed] [stencil_seed]
+    Generate a random sudoku from two seeds.
+```
 \
 output example:
 ```
